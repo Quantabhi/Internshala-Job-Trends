@@ -1,86 +1,52 @@
-# Import necessary libraries
-import requests  # For making HTTP requests
-from bs4 import BeautifulSoup  # For parsing HTML
-from textblob import TextBlob  # For sentiment analysis
-import pandas as pd  # For data manipulation
-import seaborn as sns  # For statistical data visualization
-import matplotlib.pyplot as plt  # For creating plots
+from bs4 import BeautifulSoup
+import pandas as pd
+import requests
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-# List of URLs
-urls = [
-    'https://www.financialexpress.com/market/',
-    'https://economictimes.indiatimes.com/markets/stocks/news',
-    'https://www.moneycontrol.com/news/business/markets/'
-    # Add more URLs as needed
-]
+base_url = 'https://internshala.com/internships/'
+num_pages = 150
 
-# Define Headers to simulate a request from a web browser
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'
-}
+# Create an empty dictionary to store category counts
+category_counts = {}
 
-# Create empty lists to store data
-texts = []
-sentiment_polarities = []
-sentiment_subjectivities = []
+for page in range(1, num_pages + 1):
+    url = f'{base_url}{page}'
+    html_text = requests.get(url).text
+    soup = BeautifulSoup(html_text, 'lxml')
 
-# Iterate over the list of URLs
-for url in urls:
-    # Make an HTTP Request to the specified URL with the defined headers
-    response = requests.get(url, headers=headers)
-    html_content = response.text
+    jobs = soup.find_all('div', class_='internship_meta')
+    for job in jobs:
+        category = job.find('h3', class_='heading_4_5 profile').text.strip()
 
-    # Create a BeautifulSoup object to parse the HTML content
-    soup = BeautifulSoup(html_content, 'html.parser')
+        # Combine similar categories for Content Writing
+        if "Content Writing" in category:
+            category = "Content Writing"
 
-    # Find text content for 'a' tags
-    anchor_tags = soup.find_all('li', class_='clearfix')
-    for li_tag in anchor_tags:
-        # Extract text content from 'h2' tags
-        h2_tags = li_tag.find_all('h2')
-        text_content = ' '.join([h2.text for h2 in h2_tags])
+        # Combine similar categories for Marketing
+        if "Marketing" in category:
+            category = "Marketing"
+              # combine  similar categories for  Business Development
+        if "Business Development" in category:
+            category = "Business Development"
+            # combine  similar categories for  Business Development
+        if "Sales" in category:
+            category = "Sales"
 
-        # Perform Sentiment Analysis using TextBlob
-        analysis = TextBlob(text_content)
+        # Update category count in the dictionary
+        category_counts[category] = category_counts.get(category, 0) + 1
 
-        # Append data to lists
-        texts.append(text_content)
-        sentiment_polarities.append(analysis.sentiment.polarity)
-        sentiment_subjectivities.append(analysis.sentiment.subjectivity)
-
-    # Find text content for 'h2' tags
-    h2_tags = soup.find_all('h2', class_='entry-title')
-    for tag in h2_tags:
-        # Perform Sentiment Analysis using TextBlob
-        analysis = TextBlob(tag.text)
-
-        # Append data to lists
-        texts.append(tag.text)
-        sentiment_polarities.append(analysis.sentiment.polarity)
-        sentiment_subjectivities.append(analysis.sentiment.subjectivity)
-
-    # Find text content for 'div' tags
-    div_tags = soup.find_all('div', class_='eachStory')
-    for tag in div_tags:
-        # Perform Sentiment Analysis using TextBlob
-        analysis = TextBlob(tag.text)
-
-        # Append data to lists
-        texts.append(tag.text)
-        sentiment_polarities.append(analysis.sentiment.polarity)
-        sentiment_subjectivities.append(analysis.sentiment.subjectivity)
-
-# Create a DataFrame
-data = {'Text': texts, 'Sentiment Polarity': sentiment_polarities, 'Sentiment Subjectivity': sentiment_subjectivities}
+# Convert the dictionary data to a DataFrame for Seaborn
+data = {'Category': list(category_counts.keys()), 'Count': list(category_counts.values())}
 df = pd.DataFrame(data)
 
-# Calculate overall sentiment
-overall_sentiment = TextBlob(' '.join(texts)).sentiment
+# Sort the DataFrame by count in descending order
+df = df.sort_values(by='Count', ascending=False)
 
-# Display the overall sentiment
-print(f"Overall Sentiment - Polarity: {overall_sentiment.polarity}, Subjectivity: {overall_sentiment.subjectivity}")
-
-# Plot the data using Seaborn
-sns.scatterplot(x='Sentiment Polarity', y='Sentiment Subjectivity', data=df)
-plt.title('Sentiment Analysis')
+# Create a horizontal bar plot using Seaborn
+plt.figure(figsize=(10, 6))
+sns.barplot(x='Count', y='Category', data=df, palette='viridis')
+plt.title('Analyzing the top internships posted on the Internshala website')
+plt.xlabel('Count')
+plt.ylabel('Internship Category')
 plt.show()
